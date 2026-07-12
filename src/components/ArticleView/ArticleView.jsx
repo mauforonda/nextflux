@@ -11,22 +11,24 @@ import {
   filteredArticles,
   imageGalleryActive,
 } from "@/stores/articlesStore.js";
-import { Chip, Divider, ScrollShadow } from "@heroui/react";
+import { Chip, Separator, ScrollShadow, Link } from "@heroui/react";
 import EmptyPlaceholder from "@/components/ArticleList/components/EmptyPlaceholder";
-import { cleanTitle, extractFirstImage, getFontSizeClass } from "@/lib/utils";
+import { cleanTitle, getFontSizeClass } from "@/lib/utils";
 import ArticleImage from "@/components/ArticleView/components/ArticleImage.jsx";
 import parse from "html-react-parser";
 import { settingsState } from "@/stores/settingsStore";
 import { AnimatePresence, motion, MotionConfig } from "framer-motion";
-import PlayAndPause from "@/components/ArticleView/components/PlayAndPause.jsx";
 import { currentThemeMode, themeState } from "@/stores/themeStore.js";
 import CodeBlock from "@/components/ArticleView/components/CodeBlock.jsx";
 import { useTranslation } from "react-i18next";
-import { ExternalLink } from "lucide-react";
 import { cn, getHostname } from "@/lib/utils.js";
 import FeedIcon from "@/components/ui/FeedIcon.jsx";
 import { getArticleById } from "@/db/storage";
 import Attachments from "@/components/ArticleView/components/Attachments.jsx";
+import AISummary from "@/components/ArticleView/components/AISummary.jsx";
+import Iframe from "@/components/ArticleView/components/Iframe.jsx";
+import { useIsMobile } from "@/hooks/use-mobile";
+
 const ArticleView = () => {
   const { t } = useTranslation();
   const { articleId } = useParams();
@@ -47,6 +49,7 @@ const ArticleView = () => {
   const { lightTheme } = useStore(themeState);
   const $currentThemeMode = useStore(currentThemeMode);
   const scrollAreaRef = useRef(null);
+  const { isMedium } = useIsMobile();
   // 判断当前是否实际使用了stone主题
   const isStoneTheme = () => {
     return lightTheme === "stone" && $currentThemeMode === "light";
@@ -114,13 +117,7 @@ const ArticleView = () => {
             />
           ))}
           <div className="flex justify-center">
-            <Chip
-              color="primary"
-              variant="flat"
-              size="sm"
-              classNames={{ base: "cursor-pointer my-2" }}
-              endContent={<ExternalLink className="size-4 text-primary pr-1" />}
-            >
+            <Chip color="accent" variant="soft" className="cursor-pointer my-2">
               <a
                 href={domNode.attribs.href}
                 className="border-none!"
@@ -129,6 +126,7 @@ const ArticleView = () => {
               >
                 {hostname}
               </a>
+              <Link.Icon />
             </Chip>
           </div>
         </>
@@ -146,21 +144,26 @@ const ArticleView = () => {
 
   return (
     <MotionConfig reducedMotion={reduceMotion ? "always" : "never"}>
-      <AnimatePresence mode="popLayout" initial={false}>
+      <AnimatePresence mode={isMedium ? "wait" : "popLayout"} initial={false}>
         <motion.div
           key={articleId ? "content" : "empty"}
           className={cn(
-            "flex-1 p-0 h-screen fixed md:static inset-0 z-20 md:pr-2 md:py-2",
+            "flex-1 p-0 h-screen fixed md:static inset-0 z-20",
             !articleId ? "hidden md:flex md:flex-1" : "",
+            floatingSidebar ? "" : "md:pr-2 md:py-2",
           )}
           initial={
-            articleId ? { opacity: 1, x: 40 } : { opacity: 0, x: 0, scale: 0.8 }
+            articleId
+              ? { opacity: 1, x: "100vw" }
+              : { opacity: 0, x: 0, scale: 0.8 }
           }
           animate={{ opacity: 1, x: 0, scale: 1 }}
           exit={
-            articleId
-              ? { opacity: 0, x: 40, scale: 1 }
-              : { opacity: 0, x: 0, scale: 0.8 }
+            !articleId && isMedium
+              ? false
+              : articleId
+                ? { opacity: 1, x: "100vw", scale: 1 }
+                : { opacity: 0, x: 0, scale: 0.8 }
           }
           transition={{
             duration: 0.5,
@@ -176,13 +179,13 @@ const ArticleView = () => {
               ref={scrollAreaRef}
               isEnabled={false}
               className={cn(
-                "article-scroll-area h-full bg-content2 md:bg-transparent",
+                "article-scroll-area h-full bg-background md:bg-transparent relative",
                 floatingSidebar
                   ? "md:bg-transparent"
-                  : "md:bg-background md:shadow-custom md:rounded-2xl",
+                  : "md:bg-overlay md:shadow-custom md:rounded-2xl",
               )}
             >
-              <ActionButtons parentRef={scrollAreaRef} />
+              <ActionButtons />
 
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div
@@ -217,7 +220,7 @@ const ArticleView = () => {
                           navigate(`/feed/${$activeArticle?.feed?.id}`);
                       }}
                       className={cn(
-                        "text-default-500 text-sm flex items-center gap-1 hover:cursor-pointer focus:outline-none",
+                        "text-muted text-sm flex items-center gap-1 hover:cursor-pointer focus:outline-none",
                         titleAlignType === "center" ? "justify-center" : "",
                       )}
                     >
@@ -238,7 +241,7 @@ const ArticleView = () => {
                         {cleanTitle($activeArticle?.title)}
                       </a>
                     </h1>
-                    <div className="text-default-400 text-sm">
+                    <div className="text-muted opacity-60 text-sm">
                       <time
                         dateTime={$activeArticle?.published_at}
                         key={t.language}
@@ -247,12 +250,16 @@ const ArticleView = () => {
                       </time>
                     </div>
                   </header>
-                  <Divider className="my-4" />
+                  <Separator className="my-4" />
+                  <AISummary articleId={$activeArticle?.id} />
                   {audioEnclosure && (
-                    <PlayAndPause
-                      source={audioEnclosure}
-                      poster={extractFirstImage($activeArticle)}
-                    />
+                    <audio
+                      controls
+                      className="w-full my-4"
+                      src={audioEnclosure.url}
+                    >
+                      {t("articleView.audioNotSupported")}
+                    </audio>
                   )}
                   <PhotoProvider
                     bannerVisible={true}
@@ -278,6 +285,17 @@ const ArticleView = () => {
                     >
                       {parse($activeArticle?.content, {
                         replace(domNode) {
+                          // 辅助函数：检查节点是否包含需要转为 block 的内容（图片等）
+                          const hasBlockContent = (node) => {
+                            if (!node.children) return false;
+                            return node.children.some((child) => {
+                              if (child.type !== "tag") return false;
+                              if (child.name === "img") return true;
+                              if (child.name === "a") return hasBlockContent(child);
+                              return false;
+                            });
+                          };
+
                           if (
                             domNode.type === "tag" &&
                             domNode.name === "img"
@@ -289,38 +307,20 @@ const ArticleView = () => {
                               ? handleLinkWithImg(domNode)
                               : domNode;
                           }
+                          // 将包含图片的 <p> 转为 <div>，避免 <div> 嵌套在 <p> 中
+                          if (
+                            domNode.type === "tag" &&
+                            domNode.name === "p" &&
+                            hasBlockContent(domNode)
+                          ) {
+                            domNode.name = "div";
+                            return domNode;
+                          }
                           if (
                             domNode.type === "tag" &&
                             domNode.name === "iframe"
                           ) {
-                            const { src } = domNode.attribs;
-                            domNode.attribs = {
-                              ...domNode.attribs,
-                              referrerpolicy: "strict-origin-when-cross-origin",
-                            };
-
-                            // 判断是否为 Bilibili iframe
-                            const isBilibili = src && src.includes("bilibili");
-
-                            // 如果不是 YouTube iframe,直接返回原始节点
-                            if (!isBilibili) {
-                              return domNode;
-                            }
-
-                            // 如果是 Bilibili iframe, 组装新的iframe
-                            if (isBilibili) {
-                              // 获取bilibili视频 bvid
-                              const bvid = src.match(/bvid=([^&]+)/)?.[1];
-                              if (bvid) {
-                                return (
-                                  <iframe
-                                    src={`//bilibili.com/blackboard/html5mobileplayer.html?isOutside=true&bvid=${bvid}&p=1&hideCoverInfo=1&danmaku=0`}
-                                    allowFullScreen={true}
-                                  ></iframe>
-                                );
-                              }
-                              return domNode;
-                            }
+                            return <Iframe domNode={domNode} />;
                           }
                           if (
                             domNode.type === "tag" &&

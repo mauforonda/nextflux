@@ -1,13 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { ItemWrapper } from "@/components/ui/settingItem.jsx";
 import { ChevronsUpDown, Globe } from "lucide-react";
-import {
-  Button,
-  Dropdown,
-  DropdownItem,
-  DropdownMenu,
-  DropdownTrigger,
-} from "@heroui/react";
+import { Button, Dropdown, Label } from "@heroui/react";
 import SettingIcon from "@/components/ui/SettingIcon";
 
 const languages = [
@@ -22,7 +16,7 @@ export default function Language() {
 
   return (
     <ItemWrapper title={t("settings.general.language")}>
-      <div className="flex justify-between items-center gap-2 bg-content1/80 dark:bg-content2/30 p-2.5">
+      <div className="flex justify-between items-center gap-2 bg-default/60 dark:bg-default/30 px-2.5 py-2">
         <div className="flex items-center gap-2">
           <SettingIcon variant="blue">
             <Globe />
@@ -32,32 +26,33 @@ export default function Language() {
           </div>
         </div>
         <Dropdown>
-          <DropdownTrigger>
-            <Button
-              className="capitalize gap-1 pr-1.5 rounded-md h-7 bg-content1 dark:bg-default shadow-custom-cursor!"
-              variant="solid"
-              size="sm"
-              endContent={
-                <ChevronsUpDown className="size-4 shrink-0 text-default-400" />
+          <Button variant="tertiary" size="sm" className="text-muted h-8">
+            {languages.find((lang) => lang.id === i18n.language)?.name ||
+              languages[1].name}
+            <ChevronsUpDown className="size-4 shrink-0 text-muted opacity-60" />
+          </Button>
+          <Dropdown.Popover>
+            <Dropdown.Menu
+              aria-label="language"
+              selectedKeys={
+                new Set([
+                  languages.find((lang) => lang.id === i18n.language)?.id ||
+                    languages[1].id,
+                ])
               }
+              selectionMode="single"
+              onSelectionChange={(keys) => {
+                i18n.changeLanguage(keys.currentKey);
+              }}
             >
-              {languages.find((lang) => lang.id === i18n.language)?.name}
-            </Button>
-          </DropdownTrigger>
-          <DropdownMenu
-            disallowEmptySelection
-            aria-label="language"
-            variant="flat"
-            selectedKeys={new Set([i18n.language])}
-            selectionMode="single"
-            onSelectionChange={(keys) => {
-              i18n.changeLanguage(keys.currentKey);
-            }}
-          >
-            {languages.map((lang) => (
-              <DropdownItem key={lang.id}>{lang.name}</DropdownItem>
-            ))}
-          </DropdownMenu>
+              {languages.map((lang) => (
+                <Dropdown.Item id={lang.id} key={lang.id} textValue={lang.name}>
+                  <Dropdown.ItemIndicator />
+                  <Label>{lang.name}</Label>
+                </Dropdown.Item>
+              ))}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
         </Dropdown>
       </div>
     </ItemWrapper>

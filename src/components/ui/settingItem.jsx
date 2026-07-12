@@ -1,32 +1,43 @@
 import { updateSettings } from "@/stores/settingsStore.js";
 import {
   Button,
-  Chip,
-  cn,
   Dropdown,
-  DropdownItem,
-  DropdownMenu,
-  DropdownTrigger,
+  Label,
   Kbd,
   Slider,
   Switch,
-  Tab,
   Tabs,
+  Tooltip,
 } from "@heroui/react";
 
-import { ChevronsUpDown } from "lucide-react";
+import { ChevronsUpDown, Info } from "lucide-react";
 
-const bgColor = "bg-content1/80 dark:bg-content2/30";
+const bgColor = "bg-default/60 dark:bg-default/30";
+
+const DescriptionTip = ({ description }) => {
+  if (!description) return null;
+  return (
+    <Tooltip delay={0}>
+      <Button
+        isIconOnly
+        variant="ghost"
+        size="sm"
+        className="size-5 min-w-5 p-0 bg-transparent hover:bg-transparent border-none shadow-none"
+      >
+        <Info className="size-3.5 text-muted opacity-60 shrink-0" />
+      </Button>
+      <Tooltip.Content>
+        <p>{description}</p>
+      </Tooltip.Content>
+    </Tooltip>
+  );
+};
 
 export const ItemWrapper = ({ title, children }) => {
   return (
     <div className="settings-group">
-      <div className="text-xs text-default-500 font-medium ml-2.5 mb-1">
-        {title}
-      </div>
-      <div className="rounded-xl overflow-hidden border shadow-xs">
-        {children}
-      </div>
+      <div className="text-xs text-muted font-medium ml-2.5 mb-1">{title}</div>
+      <div className="rounded-xl overflow-hidden shadow-custom">{children}</div>
     </div>
   );
 };
@@ -39,45 +50,31 @@ export const SliderItem = ({
   max,
   min,
   step,
+  description,
 }) => {
   return (
-    <div className={`grid gap-2 ${bgColor} p-2.5`}>
-      <div className="text-xs text-content2-foreground">{label}</div>
+    <div className={`grid gap-2 ${bgColor} px-2.5 py-2`}>
       <div className="flex items-center gap-2">
         {icon}
         <Slider
-          aria-label={label}
+          aria-label="slider"
+          className="w-full"
           value={[settingValue]}
           onChange={(value) => updateSettings({ [settingName]: value[0] })}
           maxValue={max}
           minValue={min}
-          showSteps
           step={step}
-          classNames={{
-            trackWrapper: "rounded-full shadow-custom-inner bg-default/40",
-            track:
-              "h-1.5 my-0 border-s-primary! border-e-transparent! bg-transparent",
-            filler:
-              "bg-primary after:absolute after:-right-3 after:w-3 after:bg-primary",
-            step: "data-[in-range=true]:bg-primary mt-1.5 w-0.5 h-0.5",
-          }}
-          renderThumb={(props) => (
-            <div
-              {...props}
-              className="group h-4 w-5 top-1/2 bg-white shadow-custom rounded-full cursor-grab data-[dragging=true]:cursor-grabbing transition-size data-[dragging=true]:w-6 data-[dragging=true]:h-5"
-            ></div>
-          )}
-        />
-        <Chip
-          size="sm"
-          variant="flat"
-          classNames={{
-            base: "shadow-custom-inner",
-            content: "w-10 justify-center text-center",
-          }}
         >
-          {settingValue}
-        </Chip>
+          <div className="flex items-center gap-1">
+            <div className="text-sm text-foreground line-clamp-1">{label}</div>
+            <DescriptionTip description={description} />
+          </div>
+          <Slider.Output className="text-muted" />
+          <Slider.Track className="h-1.5 mt-0.5">
+            <Slider.Fill />
+            <Slider.Thumb className="bg-transparent after:rounded-full" />
+          </Slider.Track>
+        </Slider>
       </div>
     </div>
   );
@@ -89,6 +86,7 @@ export const SwitchItem = ({
   settingName,
   settingValue,
   disabled = false,
+  description,
 }) => {
   return (
     <div
@@ -96,106 +94,124 @@ export const SwitchItem = ({
     >
       <div className="flex items-center gap-2">
         {icon}
-        <div className="text-sm text-foreground line-clamp-1">{label}</div>
+        <div className="flex items-center gap-1">
+          <div className="text-sm text-foreground line-clamp-1">{label}</div>
+          <DescriptionTip description={description} />
+        </div>
       </div>
       <Switch
+        size="lg"
         isSelected={settingValue}
-        classNames={{
-          wrapper: "shadow-custom-inner h-6 w-12 px-0.5 overflow-visible",
-          thumb: cn(
-            "w-7 h-5 shadow-md",
-            "group-data-[hover=true]:border-primary",
-            //selected
-            "group-data-[selected=true]:ms-4",
-            // pressed
-            "group-data-[pressed=true]:w-7.5",
-            "group-data-pressed:group-data-selected:ms-3.5!",
-          ),
-        }}
         isDisabled={disabled}
-        onValueChange={(value) => updateSettings({ [settingName]: value })}
-      />
+        onChange={(value) => updateSettings({ [settingName]: value })}
+      >
+        <Switch.Control className="rounded-full">
+          <Switch.Thumb className="rounded-full" />
+        </Switch.Control>
+      </Switch>
     </div>
   );
 };
 
-export function SelItem({ label, icon, settingName, settingValue, options }) {
+export function SelItem({
+  label,
+  icon,
+  settingName,
+  settingValue,
+  options,
+  description,
+}) {
   return (
-    <div className={`flex justify-between items-center gap-2 ${bgColor} p-2.5`}>
+    <div
+      className={`flex justify-between items-center gap-2 ${bgColor} px-2.5 py-2`}
+    >
       <div className="flex items-center gap-2">
         {icon}
-        <div className="text-sm text-foreground line-clamp-1">{label}</div>
+        <div className="flex items-center gap-1">
+          <div className="text-sm text-foreground line-clamp-1">{label}</div>
+          <DescriptionTip description={description} />
+        </div>
       </div>
       <Dropdown>
-        <DropdownTrigger>
-          <Button
-            className="capitalize gap-1 pr-1.5 h-7 rounded-md bg-content1 dark:bg-default shadow-custom-cursor!"
-            variant="solid"
-            size="sm"
-            endContent={
-              <ChevronsUpDown className="size-4 shrink-0 text-default-400" />
+        <Button variant="tertiary" size="sm" className="text-muted h-8">
+          {options.find((opt) => opt.value === settingValue.toString())
+            ?.label || settingValue}
+          <ChevronsUpDown className="size-4 shrink-0 text-muted opacity-60" />
+        </Button>
+
+        <Dropdown.Popover>
+          <Dropdown.Menu
+            aria-label="Single selection"
+            selectedKeys={new Set([settingValue.toString()])}
+            selectionMode="single"
+            onSelectionChange={(values) =>
+              updateSettings({ [settingName]: values.currentKey })
             }
           >
-            {options.find((opt) => opt.value === settingValue.toString())
-              ?.label || settingValue}
-          </Button>
-        </DropdownTrigger>
-        <DropdownMenu
-          disallowEmptySelection
-          aria-label="Single selection example"
-          selectedKeys={new Set([settingValue])}
-          selectionMode="single"
-          variant="flat"
-          onSelectionChange={(values) =>
-            updateSettings({ [settingName]: values.currentKey })
-          }
-        >
-          {options.map((option) => (
-            <DropdownItem key={option.value} style={option.style}>
-              {option.label}
-            </DropdownItem>
-          ))}
-        </DropdownMenu>
+            {options.map((option) => (
+              <Dropdown.Item
+                id={option.value.toString()}
+                key={option.value}
+                textValue={option.label}
+              >
+                <Dropdown.ItemIndicator />
+                <Label>{option.label}</Label>
+              </Dropdown.Item>
+            ))}
+          </Dropdown.Menu>
+        </Dropdown.Popover>
       </Dropdown>
     </div>
   );
 }
 
-export function GroupItem({ label, icon, settingName, settingValue, options }) {
+export function GroupItem({
+  label,
+  icon,
+  settingName,
+  settingValue,
+  options,
+  description,
+}) {
   return (
     <div
       className={`flex justify-between items-center gap-2 ${bgColor} px-2.5 h-12`}
     >
       <div className="flex items-center gap-2">
         {icon}
-        <div className="text-sm text-foreground">{label}</div>
+        <div className="flex items-center gap-1">
+          <div className="text-sm text-foreground">{label}</div>
+          <DescriptionTip description={description} />
+        </div>
       </div>
       <Tabs
         aria-label={settingName}
-        size="sm"
-        variant="solid"
-        classNames={{
-          tabList:
-            "bg-default-100/90 backdrop-blur-md shadow-custom-inner p-px gap-0 rounded-small overflow-visible",
-          tab: "py-1 h-7",
-          cursor: "bg-content1 shadow-custom-cursor! rounded-small",
-        }}
+        variant="primary"
         selectedKey={settingValue}
         onSelectionChange={(value) => {
           updateSettings({ [settingName]: value });
         }}
       >
-        {options.map((option) => (
-          <Tab
-            key={option.value}
-            title={
-              <div className="flex items-center space-x-2">
-                {option.icon}
-                {option.label && <span>{option.label}</span>}
-              </div>
-            }
-          />
-        ))}
+        <Tabs.ListContainer>
+          <Tabs.List
+            aria-label={settingName}
+            className="bg-default-100/90 backdrop-blur-md shadow-custom-inner p-px gap-0 rounded-small overflow-visible"
+          >
+            {options.map((option) => (
+              <Tabs.Tab
+                key={option.value}
+                id={option.value}
+                className="py-1 h-7"
+              >
+                <div className="flex items-center space-x-2">
+                  {option.icon}
+                  {option.label && <span>{option.label}</span>}
+                </div>
+                <Tabs.Indicator />
+              </Tabs.Tab>
+            ))}
+          </Tabs.List>
+        </Tabs.ListContainer>
       </Tabs>
     </div>
   );
@@ -209,15 +225,9 @@ export function KeyboardItem({ desc, kbdKey, keyStr }) {
       <div className="flex items-center gap-2">
         <div className="text-sm text-foreground">{desc}</div>
       </div>
-      <Kbd
-        classNames={{
-          base: "min-w-8 shadow-custom!",
-          abbr: "text-xs text-default-400",
-          content: "w-full text-xs text-default-400",
-        }}
-        keys={kbdKey}
-      >
-        {keyStr}
+      <Kbd>
+        {kbdKey && <Kbd.Abbr keyValue={kbdKey} />}
+        <Kbd.Content>{keyStr}</Kbd.Content>
       </Kbd>
     </div>
   );

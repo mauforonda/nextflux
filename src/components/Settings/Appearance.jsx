@@ -1,5 +1,5 @@
 import { settingsState } from "@/stores/settingsStore";
-import { Divider } from "@heroui/react";
+import { Separator } from "@heroui/react";
 import { useStore } from "@nanostores/react";
 import {
   ItemWrapper,
@@ -20,6 +20,7 @@ import {
   LetterText,
   SquareArrowUp,
   PanelLeft,
+  SquareRoundCorner,
 } from "lucide-react";
 import Theme from "./components/Theme";
 import { useTranslation } from "react-i18next";
@@ -33,6 +34,7 @@ export default function Appearance() {
     showFavicon,
     showReadingTime,
     reduceMotion,
+    borderRadius,
     interfaceFontSize,
     textPreviewLines,
     titleLines,
@@ -59,6 +61,20 @@ export default function Appearance() {
             { value: "18", label: t("settings.appearance.LargerText") },
           ]}
         />
+        <Separator />
+        <SliderItem
+          label={t("settings.appearance.borderRadius")}
+          icon={
+            <SettingIcon variant="purple">
+              <SquareRoundCorner />
+            </SettingIcon>
+          }
+          settingName="borderRadius"
+          settingValue={borderRadius}
+          max={0.5}
+          min={0}
+          step={0.1}
+        />
       </ItemWrapper>
       <ItemWrapper title={t("settings.appearance.favicons")}>
         <SelItem
@@ -75,7 +91,7 @@ export default function Appearance() {
             { value: "square", label: t("settings.appearance.square") },
           ]}
         />
-        <Divider />
+        <Separator />
         <SwitchItem
           label={t("settings.appearance.grayscale")}
           icon={
@@ -110,7 +126,7 @@ export default function Appearance() {
           settingName="showIndicator"
           settingValue={showIndicator}
         />
-        <Divider />
+        <Separator />
         <SliderItem
           label={t("settings.appearance.titleLines")}
           icon={
@@ -124,7 +140,7 @@ export default function Appearance() {
           min={0}
           step={1}
         />
-        <Divider />
+        <Separator />
         <SliderItem
           label={t("settings.appearance.textPreviewLines")}
           icon={
@@ -138,7 +154,7 @@ export default function Appearance() {
           min={0}
           step={1}
         />
-        <Divider />
+        <Separator />
         <SelItem
           label={t("settings.appearance.imagePreviews")}
           icon={
@@ -154,7 +170,7 @@ export default function Appearance() {
             { value: "large", label: t("settings.appearance.large") },
           ]}
         />
-        <Divider />
+        <Separator />
         <SwitchItem
           label={t("settings.appearance.showFavicon")}
           icon={
@@ -165,7 +181,7 @@ export default function Appearance() {
           settingName="showFavicon"
           settingValue={showFavicon}
         />
-        <Divider />
+        <Separator />
         <SwitchItem
           label={t("settings.appearance.showReadingTime")}
           icon={

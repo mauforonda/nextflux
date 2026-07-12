@@ -3,18 +3,18 @@ import {
   Circle,
   CircleDot,
   FileText,
-  Forward,
-  Reply,
   Share,
   Star,
   CloudUpload,
+  ArrowRight,
+  Sparkles,
 } from "lucide-react";
 import {
   handleMarkStatus,
   handleToggleStar,
   handleToggleContent,
 } from "@/handlers/articleHandlers.js";
-import { Button, Navbar, NavbarContent, Tooltip } from "@heroui/react";
+import { Button, CloseButton, cn, Spinner, Tooltip } from "@heroui/react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "@nanostores/react";
 import {
@@ -23,23 +23,33 @@ import {
   loadingOriginContent,
 } from "@/stores/articlesStore";
 import Confetti from "@/components/ui/Confetti";
-import { settingsState } from "@/stores/settingsStore.js";
 import { useRef, useState } from "react";
 import minifluxAPI from "@/api/miniflux";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { hasIntegrations } from "@/stores/basicInfoStore.js";
+import { settingsState } from "@/stores/settingsStore.js";
+import {
+  aiSummaries,
+  setSummaryLoading,
+  appendSummaryChunk,
+  setSummaryDone,
+  setSummaryError,
+} from "@/stores/aiStore.js";
+import { summarizeArticleStream } from "@/api/openai.js";
 
-export default function ActionButtons({ parentRef }) {
+export default function ActionButtons() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const $articles = useStore(filteredArticles);
   const $activeArticle = useStore(activeArticle);
-  const { autoHideToolbar } = useStore(settingsState);
   const buttonRef = useRef(null);
   const fetchLoading = useStore(loadingOriginContent);
   const [saveLoading, setSaveLoading] = useState(false);
   const $hasIntegrations = useStore(hasIntegrations);
+  const { aiApiKey, floatingSidebar } = useStore(settingsState);
+  const $aiSummaries = useStore(aiSummaries);
+  const currentSummaryState = $aiSummaries[$activeArticle?.id];
 
   // 获取当前文章在列表中的索引
   const currentIndex = $articles.findIndex((a) => a.id === $activeArticle?.id);
@@ -93,6 +103,42 @@ export default function ActionButtons({ parentRef }) {
     }
   };
 
+  // 处理AI总结
+  const handleAISummarize = () => {
+    if (!$activeArticle) return;
+    const articleId = $activeArticle.id;
+    if (currentSummaryState?.loading) return;
+    setSummaryLoading(articleId);
+
+    let rafId = null;
+    let pendingText = "";
+
+    const flush = () => {
+      if (pendingText) {
+        appendSummaryChunk(articleId, pendingText);
+        pendingText = "";
+      }
+      rafId = null;
+    };
+
+    summarizeArticleStream($activeArticle, {
+      onChunk: (chunk) => {
+        pendingText += chunk;
+        if (!rafId) rafId = requestAnimationFrame(flush);
+      },
+      onDone: () => {
+        if (rafId) cancelAnimationFrame(rafId);
+        flush();
+        setSummaryDone(articleId);
+      },
+      onError: (error) => {
+        if (rafId) cancelAnimationFrame(rafId);
+        setSummaryError(articleId, error.message);
+        toast.error(error.message);
+      },
+    });
+  };
+
   // 处理保存到第三方服务
   const handleSaveToThirdParty = async () => {
     if (!$activeArticle) return;
@@ -108,182 +154,183 @@ export default function ActionButtons({ parentRef }) {
   };
 
   return (
-    <Navbar
-      className="action-buttons py-2 standalone:pt-safe-or-2.5 bg-gradient-to-b from-content2/70 to-background/0"
-      maxWidth="full"
-      isBlurred={false}
-      shouldHideOnScroll={autoHideToolbar}
-      parentRef={parentRef}
-      classNames={{ wrapper: "px-2 h-auto", content: "gap-0" }}
+    <div
+      className={cn(
+        "action-buttons py-2 standalone:pt-safe-or-2.5 backdrop-blur-sm border-b border-foreground/10 px-2 sticky top-0 z-50",
+        floatingSidebar
+          ? "bg-background/70"
+          : "bg-background/70 md:bg-overlay/70",
+      )}
     >
-      <NavbarContent className="flex items-center space-between">
-        <div className="flex items-center gap-1 bg-background/30 backdrop-blur-lg shadow-custom rounded-full p-0.5 mr-2">
-          <Tooltip
-            content={t("common.close")}
-            classNames={{ content: "shadow-custom!" }}
-          >
-            <Button
-              onPress={handleClose}
-              size="sm"
-              radius="full"
-              variant="light"
-              isIconOnly
-            >
-              <ArrowLeft className="h-4 w-4 text-default-500" />
-              <span className="sr-only">{t("common.close")}</span>
-            </Button>
-          </Tooltip>
-        </div>
-        <div className="hidden md:flex items-center gap-1 bg-background/30 backdrop-blur-lg shadow-custom rounded-full p-0.5">
-          <Tooltip
-            content={t("common.previous")}
-            classNames={{ content: "shadow-custom!" }}
-          >
+      <div className="flex items-center">
+        <Tooltip
+          content={t("common.close")}
+          classNames={{ content: "shadow-custom!" }}
+        >
+          <CloseButton onPress={handleClose} className="mx-2" />
+          <Tooltip.Content showArrow>
+            <Tooltip.Arrow />
+            {t("common.close")}
+          </Tooltip.Content>
+        </Tooltip>
+        <div className="gap-1 hidden md:flex">
+          <Tooltip delay={0}>
             <Button
               onPress={handlePrevious}
               isDisabled={currentIndex <= 0}
-              size="sm"
-              radius="full"
-              variant="light"
               isIconOnly
+              size="sm"
+              variant="ghost"
             >
-              <Reply className="h-4 w-4 text-default-500" />
-              <span className="sr-only">{t("common.previous")}</span>
+              <ArrowLeft className="h-4 w-4 text-muted" />
             </Button>
+            <Tooltip.Content showArrow>
+              <Tooltip.Arrow />
+              {t("common.previous")}
+            </Tooltip.Content>
           </Tooltip>
-          <Tooltip
-            content={t("common.next")}
-            classNames={{ content: "shadow-custom!" }}
-          >
+          <Tooltip delay={0}>
             <Button
               onPress={handleNext}
               isDisabled={currentIndex >= $articles.length - 1}
-              size="sm"
-              radius="full"
-              variant="light"
               isIconOnly
+              size="sm"
+              variant="ghost"
             >
-              <Forward className="h-4 w-4 text-default-500" />
-              <span className="sr-only">{t("common.next")}</span>
+              <ArrowRight className="h-4 w-4 text-muted" />
             </Button>
+            <Tooltip.Content showArrow>
+              <Tooltip.Arrow />
+              {t("common.next")}
+            </Tooltip.Content>
           </Tooltip>
         </div>
-        <div className="ml-auto flex items-center gap-1 bg-background/30 backdrop-blur-lg shadow-custom rounded-full p-0.5">
-          <Tooltip
-            content={
-              $activeArticle?.status === "read"
-                ? t("common.unread")
-                : t("common.read")
-            }
-            classNames={{ content: "shadow-custom!" }}
-          >
+        <div className="flex gap-1 ml-auto">
+          <Tooltip delay={0}>
             <Button
               onPress={() => handleMarkStatus($activeArticle)}
-              size="sm"
-              radius="full"
-              variant="light"
+              variant="ghost"
               isIconOnly
+              size="sm"
             >
-              {$activeArticle?.status === "read" ? (
-                <Circle className="size-4 text-default-500 p-0.5" />
+              {$activeArticle?.status === "unread" ? (
+                <CircleDot className="size-4 text-muted p-0.5 fill-current" />
               ) : (
-                <CircleDot className="size-4 text-default-500 p-0.5 fill-current" />
+                <Circle className="size-4 text-muted p-0.5" />
               )}
-              <span className="sr-only">
-                {$activeArticle?.status === "read"
-                  ? t("common.unread")
-                  : t("common.read")}
-              </span>
             </Button>
+            <Tooltip.Content showArrow>
+              <Tooltip.Arrow />
+              {$activeArticle?.status === "read"
+                ? t("common.unread")
+                : t("common.read")}
+            </Tooltip.Content>
           </Tooltip>
-          <Tooltip
-            content={
-              $activeArticle?.starred === 1
-                ? t("common.unstar")
-                : t("common.star")
-            }
-            classNames={{ content: "shadow-custom!" }}
-          >
+          <Tooltip delay={0}>
             <Button
               ref={buttonRef}
-              size="sm"
-              radius="full"
-              variant="light"
+              variant="ghost"
               isIconOnly
+              size="sm"
               onPress={() => {
                 $activeArticle?.starred === 0 && Confetti(buttonRef);
                 handleToggleStar($activeArticle);
               }}
-              className="relative"
             >
               <Star
-                className={`size-4 text-default-500 ${$activeArticle?.starred === 1 ? "fill-current" : ""}`}
+                className={`size-4 text-muted ${$activeArticle?.starred === 1 ? "fill-current" : ""}`}
               />
-              <span className="sr-only">
-                {$activeArticle?.starred === 1
-                  ? t("common.unstar")
-                  : t("common.star")}
-              </span>
             </Button>
+            <Tooltip.Content showArrow>
+              <Tooltip.Arrow />
+              {$activeArticle?.starred === 1
+                ? t("common.unstar")
+                : t("common.star")}
+            </Tooltip.Content>
           </Tooltip>
           {$hasIntegrations && (
-            <Tooltip
-              content={t("articleView.saveToThirdParty")}
-              classNames={{ content: "shadow-custom!" }}
-            >
+            <Tooltip delay={0}>
               <Button
-                size="sm"
-                radius="full"
-                variant="light"
+                variant="ghost"
                 isIconOnly
+                size="sm"
                 onPress={handleSaveToThirdParty}
-                isLoading={saveLoading}
+                isPending={saveLoading}
               >
-                <CloudUpload className="size-4 text-default-500" />
+                {saveLoading ? (
+                  <Spinner color="current" size="sm" />
+                ) : (
+                  <CloudUpload className="size-4 text-muted" />
+                )}
               </Button>
+              <Tooltip.Content showArrow>
+                <Tooltip.Arrow />
+                {t("articleView.saveToThirdParty")}
+              </Tooltip.Content>
             </Tooltip>
           )}
-          <Tooltip
-            content={
-              $activeArticle?.shownOriginal
-                ? t("articleView.showSummary")
-                : t("articleView.getFullText")
-            }
-            classNames={{ content: "shadow-custom!" }}
-          >
+          {aiApiKey && (
+            <Tooltip delay={0}>
+              <Button
+                onPress={handleAISummarize}
+                variant="ghost"
+                isIconOnly
+                size="sm"
+                isPending={currentSummaryState?.loading}
+              >
+                {currentSummaryState?.loading ? (
+                  <Spinner color="current" size="sm" />
+                ) : (
+                  <Sparkles
+                    className={`size-4 ${currentSummaryState?.summary ? "text-accent" : "text-muted"}`}
+                  />
+                )}
+              </Button>
+              <Tooltip.Content showArrow>
+                <Tooltip.Arrow />
+                {t("articleView.aiSummarize")}
+              </Tooltip.Content>
+            </Tooltip>
+          )}
+          <Tooltip delay={0}>
             <Button
               onPress={() => handleToggleContent($activeArticle)}
-              size="sm"
-              radius="full"
-              variant={$activeArticle?.shownOriginal ? "flat" : "light"}
+              variant="ghost"
               isIconOnly
-              isLoading={fetchLoading}
+              size="sm"
+              isPending={fetchLoading}
             >
-              <FileText className="size-4 text-default-500" />
-              <span className="sr-only">
-                {$activeArticle?.shownOriginal
-                  ? t("articleView.showSummary")
-                  : t("articleView.getFullText")}
-              </span>
+              {fetchLoading ? (
+                <Spinner color="current" size="sm" />
+              ) : (
+                <FileText
+                  className={cn(
+                    "size-4",
+                    $activeArticle?.shownOriginal
+                      ? "text-accent"
+                      : "text-muted",
+                  )}
+                />
+              )}
             </Button>
+            <Tooltip.Content showArrow>
+              <Tooltip.Arrow />
+              {$activeArticle?.shownOriginal
+                ? t("articleView.showSummary")
+                : t("articleView.getFullText")}
+            </Tooltip.Content>
           </Tooltip>
-          <Tooltip
-            content={t("common.share")}
-            classNames={{ content: "shadow-custom!" }}
-          >
-            <Button
-              size="sm"
-              radius="full"
-              variant="light"
-              isIconOnly
-              onPress={handleShare}
-            >
-              <Share className="size-4 text-default-500" />
-              <span className="sr-only">{t("common.share")}</span>
+          <Tooltip delay={0}>
+            <Button variant="ghost" isIconOnly size="sm" onPress={handleShare}>
+              <Share className="size-4 text-muted" />
             </Button>
+            <Tooltip.Content showArrow>
+              <Tooltip.Arrow />
+              {t("common.share")}
+            </Tooltip.Content>
           </Tooltip>
         </div>
-      </NavbarContent>
-    </Navbar>
+      </div>
+    </div>
   );
 }

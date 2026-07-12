@@ -20,16 +20,14 @@
     <meta content="#FFFFFF" media="(prefers-color-scheme: light)" name="background-color"/>
     <meta content="#000000" media="(prefers-color-scheme: dark)" name="background-color"/>
     <meta content="A Simple but Powerful RSS Reader for Miniflux" name="description"/>
-    <link href="https://fonts.loli.net/css2?family=Noto+Sans+SC&family=Noto+Serif+SC:wght@400;500;700&display=swap"
-          rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.1.0/style.css" rel="stylesheet">
+    <!-- Fonts are loaded on demand via fontLoader.js -->
     <title>Nextflux</title>
 </head>
-<body class="bg-content2">
-  <div id="splash-screen" class="fixed z-50 inset-0 flex items-center justify-center bg-background [&.fade-out]:opacity-0 transition-opacity duration-400">
+<body class="bg-background">
+  <div id="splash-screen" class="fixed z-50 inset-0 flex items-center justify-center bg-overlay [&.fade-out]:opacity-0 transition-opacity duration-400">
     <div class="flex flex-col items-center gap-4">
       <div class="splash-logo animate-in fade-in zoom-in duration-400">
-        <div class="loading-spinner w-6 h-6 border-3 border-primary border-t-default rounded-full animate-spin"></div>
+        <div class="loading-spinner w-6 h-6 border-3 border-accent border-t-default rounded-full animate-spin"></div>
       </div>
     </div>
   </div>

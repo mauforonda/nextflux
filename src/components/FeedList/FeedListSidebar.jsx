@@ -11,7 +11,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Image, ScrollShadow } from "@heroui/react";
+import { ScrollShadow } from "@heroui/react";
 import { formatLastSync } from "@/lib/format";
 import { settingsState } from "@/stores/settingsStore.js";
 import ArticlesGroup from "@/components/FeedList/components/ArticlesGroup.jsx";
@@ -26,6 +26,7 @@ import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useParams, useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { isModalOpen } from "@/stores/modalStore";
+
 const FeedListSidebar = () => {
   const { t } = useTranslation();
   const $lastSync = useStore(lastSync);
@@ -33,8 +34,10 @@ const FeedListSidebar = () => {
   const { showHiddenFeeds, floatingSidebar } = useStore(settingsState);
   const { setOpenMobile } = useSidebar();
   const { articleId } = useParams();
-  const { isMobile } = useIsMobile();
+  const { isMobile, isMedium } = useIsMobile();
   const navigate = useNavigate();
+  // 判断是否在移动端且正在查看文章详情
+  const isArticleDetailOpen = isMedium && !!articleId;
   const basePath = window.location.pathname.split("/article/")[0];
   useSwipeGesture({
     onSwipeRight: () => {
@@ -58,16 +61,16 @@ const FeedListSidebar = () => {
   return (
     <Sidebar
       variant={floatingSidebar ? "floating" : "sidebar"}
-      className="sidebar"
+      className={`sidebar ${isArticleDetailOpen ? "sidebar-shifted" : ""}`}
     >
       <SidebarHeader className="sidebar-header standalone:pt-safe-or-2">
         <SidebarMenu>
           <SidebarMenuItem>
             <div className="flex items-center gap-1">
-              <Image src={logo} alt="logo" className="size-8" radius="none" />
+              <img src={logo} alt="logo" className="size-8" />
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">Nextflux</span>
-                <span className="truncate text-xs text-default-400">
+                <span className="truncate text-xs text-muted opacity-60">
                   {$isSyncing ? t("common.syncing") : formatLastSync($lastSync)}
                 </span>
               </div>
